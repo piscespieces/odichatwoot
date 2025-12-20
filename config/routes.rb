@@ -638,4 +638,6 @@ Rails.application.routes.draw do
   # ----------------------------------------------------------------------
   # Routes for testing
   resources :widget_tests, only: [:index] unless Rails.env.production?
+
+  get 'up' => 'rails/health#show', :as => :rails_health_check
 end

@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -x
-
 # Remove a potentially pre-existing server.pid for Rails.
 rm -rf /app/tmp/pids/server.pid
 rm -rf /app/tmp/cache/*
@@ -29,6 +27,9 @@ until $BUNDLE
 do
   sleep 2;
 done
+
+echo "Running database migrations..."
+bundle exec rails db:chatwoot_prepare
 
 # Execute the main process of the container
 exec "$@"
