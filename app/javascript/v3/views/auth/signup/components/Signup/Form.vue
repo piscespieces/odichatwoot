@@ -12,7 +12,7 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 import { isValidPassword } from 'shared/helpers/Validators';
 import GoogleOAuthButton from '../../../../../components/GoogleOauth/Button.vue';
 import { register } from '../../../../../api/auth';
-import * as CompanyEmailValidator from 'company-email-validator';
+// import * as CompanyEmailValidator from 'company-email-validator';
 
 const MIN_PASSWORD_LENGTH = 6;
 const SPECIAL_CHAR_REGEX = /[!@#$%^&*()_+\-=[\]{}|'"/\\.,`<>:;?~]/;
@@ -58,9 +58,9 @@ export default {
         email: {
           required,
           email,
-          businessEmailValidator(value) {
-            return CompanyEmailValidator.isCompanyEmail(value);
-          },
+          // businessEmailValidator(value) {
+          //   return CompanyEmailValidator.isCompanyEmail(value);
+          // },
         },
         password: {
           required,
