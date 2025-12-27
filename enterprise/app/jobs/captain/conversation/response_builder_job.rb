@@ -103,12 +103,36 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
   end
 
   def create_messages
-    validate_message_content!(@response['response'])
-    create_outgoing_message(@response['response'], agent_name: @response['agent_name'])
+    content = sanitize_response_content(@response['response'])
+    validate_message_content!(content)
+    create_outgoing_message(content, agent_name: @response['agent_name'])
   end
 
   def validate_message_content!(content)
     raise ArgumentError, 'Message content cannot be blank' if content.blank?
+  end
+
+  # Extracts clean response text from potentially malformed JSON content
+  # Handles cases where the agent returns JSON string(s) instead of plain text
+  def sanitize_response_content(content)
+    return content if content.blank?
+
+    # Try to extract response from JSON if the content looks like JSON
+    if content.strip.start_with?('{')
+      # Find all JSON objects in the string that contain a response key
+      json_pattern = /\{[^{}]*"response"\s*:\s*"[^"]*"[^{}]*\}/
+      matches = content.scan(json_pattern)
+
+      if matches.any?
+        # Parse the first JSON match and extract the response
+        parsed = JSON.parse(matches.first)
+        return parsed['response'] if parsed['response'].present?
+      end
+    end
+
+    content
+  rescue JSON::ParserError
+    content
   end
 
   def create_outgoing_message(message_content, agent_name: nil)

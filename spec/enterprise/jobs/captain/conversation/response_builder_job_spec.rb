@@ -230,6 +230,64 @@ RSpec.describe Captain::Conversation::ResponseBuilderJob, type: :job do
     end
   end
 
+  describe '#sanitize_response_content' do
+    let(:conversation) { create(:conversation, inbox: inbox, account: account) }
+    let(:job) { described_class.new }
+
+    before do
+      job.instance_variable_set(:@conversation, conversation)
+      job.instance_variable_set(:@assistant, assistant)
+    end
+
+    it 'extracts response from single JSON object' do
+      content = '{"response":"Para comenzar, ¿podrías proporcionarme tu nombre completo?","reasoning":"Need to collect info"}'
+
+      result = job.send(:sanitize_response_content, content)
+
+      expect(result).to eq('Para comenzar, ¿podrías proporcionarme tu nombre completo?')
+    end
+
+    it 'extracts response from first JSON object when multiple are present' do
+      content = <<~JSON.strip
+        {"response":"Para comenzar, ¿podrías proporcionarme tu nombre completo, por favor?","reasoning":"Necesito recopilar la información requerida en orden para poder proceder con la solicitud de cita. El primer dato que debo obtener es el nombre completo del contacto."}
+        {"response":"Para comenzar, ¿podrías proporcionarme tu nombre completo, por favor?","reasoning":"Necesito recopilar la información requerida en orden para poder proceder con la solicitud de cita. El primer dato que debo obtener es el nombre completo del contacto."}
+      JSON
+
+      result = job.send(:sanitize_response_content, content)
+
+      expect(result).to eq('Para comenzar, ¿podrías proporcionarme tu nombre completo, por favor?')
+    end
+
+    it 'returns plain text content unchanged' do
+      content = 'Hello, how can I help you today?'
+
+      result = job.send(:sanitize_response_content, content)
+
+      expect(result).to eq('Hello, how can I help you today?')
+    end
+
+    it 'returns nil for blank content' do
+      expect(job.send(:sanitize_response_content, nil)).to be_nil
+      expect(job.send(:sanitize_response_content, '')).to eq('')
+    end
+
+    it 'returns original content when JSON parsing fails' do
+      content = '{invalid json content'
+
+      result = job.send(:sanitize_response_content, content)
+
+      expect(result).to eq('{invalid json content')
+    end
+
+    it 'returns original content when JSON has no response key' do
+      content = '{"message":"Hello","type":"greeting"}'
+
+      result = job.send(:sanitize_response_content, content)
+
+      expect(result).to eq('{"message":"Hello","type":"greeting"}')
+    end
+  end
+
   describe 'out of office message after handoff' do
     let(:conversation) { create(:conversation, inbox: inbox, account: account, status: :pending) }
     let(:mock_llm_chat_service) { instance_double(Captain::Llm::AssistantChatService) }
