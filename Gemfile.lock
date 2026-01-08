@@ -627,7 +627,7 @@ GEM
     opensearch-ruby (3.4.0)
       faraday (>= 1.0, < 3)
       multi_json (>= 1.0)
-    openssl (3.2.0)
+    openssl (3.3.2)
     opentelemetry-api (1.7.0)
     opentelemetry-common (0.23.0)
       opentelemetry-api (~> 1.0)
@@ -1096,6 +1096,7 @@ DEPENDENCIES
   omniauth-rails_csrf_protection (~> 1.0, >= 1.0.2)
   omniauth-saml
   opensearch-ruby
+  openssl (~> 3.3)
   opentelemetry-exporter-otlp
   opentelemetry-sdk
   pg

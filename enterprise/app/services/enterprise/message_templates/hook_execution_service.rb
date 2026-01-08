@@ -29,14 +29,25 @@ module Enterprise::MessageTemplates::HookExecutionService
   private
 
   def schedule_captain_response
-    job_args = [conversation, conversation.inbox.captain_assistant]
+    # Pass message timestamp for proper debouncing on buffered channels
+    job_args = [conversation, conversation.inbox.captain_assistant, message.created_at]
+    wait_time = calculate_captain_response_wait_time
 
-    if message.attachments.blank?
+    if wait_time.zero?
       Captain::Conversation::ResponseBuilderJob.perform_later(*job_args)
     else
-      wait_time = calculate_attachment_wait_time
       Captain::Conversation::ResponseBuilderJob.set(wait: wait_time).perform_later(*job_args)
     end
+  end
+
+  def calculate_captain_response_wait_time
+    base_wait = buffered_response_channel? ? 3.seconds : 0.seconds
+    attachment_wait = message.attachments.present? ? calculate_attachment_wait_time : 0.seconds
+    base_wait + attachment_wait
+  end
+
+  def buffered_response_channel?
+    inbox.whatsapp? || inbox.instagram?
   end
 
   def calculate_attachment_wait_time
