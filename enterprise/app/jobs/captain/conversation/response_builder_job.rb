@@ -1,12 +1,17 @@
 class Captain::Conversation::ResponseBuilderJob < ApplicationJob
   MAX_MESSAGE_LENGTH = 10_000
+  BUFFER_TIME = 3.seconds
   retry_on ActiveStorage::FileNotFoundError, attempts: 3, wait: 2.seconds
   retry_on Faraday::BadRequestError, attempts: 3, wait: 2.seconds
 
-  def perform(conversation, assistant)
+  # triggering_message_at: timestamp of the message that triggered this job (for debouncing)
+  def perform(conversation, assistant, triggering_message_at = nil)
     @conversation = conversation
     @inbox = conversation.inbox
     @assistant = assistant
+    @triggering_message_at = triggering_message_at
+
+    return if should_skip_for_newer_messages?
 
     Current.executed_by = @assistant
 
@@ -47,7 +52,6 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     return process_action('handoff') if handoff_requested?
 
     create_messages
-    Rails.logger.info("[CAPTAIN][ResponseBuilderJob] Incrementing response usage for #{account.id}")
     account.increment_response_usage
   end
 
@@ -161,5 +165,32 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
 
   def captain_v2_enabled?
     account.feature_enabled?('captain_integration_v2')
+  end
+
+  def should_skip_for_newer_messages?
+    return false unless buffered_response_channel?
+    return false unless @triggering_message_at # Backward compatibility: no debouncing if not passed
+
+    # Query the Message model directly instead of using the association
+    # to ensure we get fresh data (avoids ActiveRecord association caching)
+    # Force uncached query to ensure we get fresh data from the database
+    all_incoming = Message.uncached do
+      Message.where(conversation_id: @conversation.id)
+             .where(message_type: :incoming)
+             .reorder(created_at: :desc, id: :desc)
+             .limit(5)
+             .to_a
+    end
+
+    last_incoming = all_incoming.first
+    return false unless last_incoming
+
+    # Skip if there's a NEWER message than the one that triggered this job
+    # A newer job will be scheduled for that message
+    last_incoming.created_at > @triggering_message_at
+  end
+
+  def buffered_response_channel?
+    @inbox.whatsapp? || @inbox.instagram?
   end
 end

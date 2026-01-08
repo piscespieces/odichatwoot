@@ -22,7 +22,7 @@ RSpec.describe MessageTemplates::HookExecutionService do
       end
 
       it 'schedules captain response job for incoming messages on pending conversations' do
-        expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).with(conversation, assistant)
+        expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).with(conversation, assistant, anything)
 
         create(:message, conversation: conversation, message_type: :incoming)
       end
@@ -41,7 +41,7 @@ RSpec.describe MessageTemplates::HookExecutionService do
       end
 
       it 'schedules captain response job outside business hours (Captain always responds when configured)' do
-        expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).with(conversation, assistant)
+        expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).with(conversation, assistant, anything)
 
         create(:message, conversation: conversation, message_type: :incoming)
       end
@@ -74,7 +74,7 @@ RSpec.describe MessageTemplates::HookExecutionService do
       end
 
       it 'schedules captain response job regardless of time' do
-        expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).with(conversation, assistant)
+        expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).with(conversation, assistant, anything)
 
         create(:message, conversation: conversation, message_type: :incoming)
       end
