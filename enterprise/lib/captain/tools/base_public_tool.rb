@@ -11,6 +11,11 @@ class Captain::Tools::BasePublicTool < Agents::Tool
     true
   end
 
+  def self.available?(_account)
+    # Default to true for all public tools
+    true
+  end
+
   def permissions
     # Override in subclasses to specify required permissions
     # Returns empty array for public tools (no permissions required)

@@ -2,17 +2,16 @@ module Enterprise::MessageTemplates::HookExecutionService
   MAX_ATTACHMENT_WAIT_SECONDS = 4
 
   def trigger_templates
+    # Must check BEFORE super, because super creates the greeting template message
+    # which would make first_message_from_contact? return false
+    defer_to_greeting = should_defer_to_greeting?
+
     super
     return unless should_process_captain_response?
     return perform_handoff unless inbox.captain_active?
+    return if defer_to_greeting
 
     schedule_captain_response
-  end
-
-  def should_send_greeting?
-    return false if captain_handling_conversation?
-
-    super
   end
 
   def should_send_out_of_office_message?
@@ -69,6 +68,14 @@ module Enterprise::MessageTemplates::HookExecutionService
 
   def send_out_of_office_message_after_handoff
     ::MessageTemplates::Template::OutOfOffice.perform_if_applicable(conversation)
+  end
+
+  def should_defer_to_greeting?
+    # Skip Captain on first message when greeting is enabled
+    # The greeting takes precedence, Captain will respond to subsequent messages
+    return false unless inbox.greeting_enabled? && inbox.greeting_message.present?
+
+    first_message_from_contact?
   end
 
   def captain_handling_conversation?

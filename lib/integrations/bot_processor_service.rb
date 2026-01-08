@@ -16,6 +16,7 @@ class Integrations::BotProcessorService
     return if message.private?
     return unless processable_message?(message)
     return unless conversation.pending?
+    return if should_defer_to_greeting?(message)
 
     true
   end
@@ -59,5 +60,21 @@ class Integrations::BotProcessorService
     when 'resolve'
       message.conversation.resolved!
     end
+  end
+
+  def should_defer_to_greeting?(message)
+    # Skip bot processing if this is the first contact message and greeting is enabled
+    # This allows the channel greeting to send first, then bot takes over on subsequent messages
+    return false unless message.incoming?
+
+    inbox = conversation.inbox
+    return false unless inbox.greeting_enabled? && inbox.greeting_message.present?
+
+    # Check if this is first message from contact (same logic as MessageTemplates::HookExecutionService)
+    first_message_from_contact?
+  end
+
+  def first_message_from_contact?
+    conversation.messages.outgoing.count.zero? && conversation.messages.template.count.zero?
   end
 end

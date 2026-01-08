@@ -307,6 +307,14 @@ en:
       name: 'Google Translate'
       short_description: 'Automatically translate customer messages for agents.'
       description: "Integrate Google Translate to help agents easily translate customer messages. This integration automatically detects the language and converts it to the agent's or admin's preferred language."
+    google_calendar:
+      name: 'Google Calendar'
+      short_description: 'Authorize Odichat to manage events through your Google Calendar.'
+      description: 'Connect your Google Calendar account to Odichat so agents can schedule or manage customer meetings without leaving the inbox.'
+    cal_com:
+      name: 'Cal.com'
+      short_description: 'Enable AI-powered appointment scheduling with Cal.com.'
+      description: 'Connect your Cal.com account to enable Captain AI to check availability and book appointments on behalf of your customers.'
     openai:
       name: 'OpenAI'
       short_description: 'AI-powered reply suggestions, summarization, and message enhancement.'

@@ -140,12 +140,24 @@ RSpec.describe MessageTemplates::HookExecutionService do
         conversation.update!(status: :pending)
       end
 
-      it 'does not create greeting message in conversation' do
+      it 'creates greeting message even when Captain is handling (greeting takes precedence)' do
         inbox.update!(greeting_enabled: true, greeting_message: 'Hello! How can we help you?', enable_email_collect: false)
 
         expect do
           create(:message, conversation: conversation, message_type: :incoming)
-        end.not_to(change { conversation.reload.messages.template.count })
+        end.to change { conversation.reload.messages.template.count }.by(1)
+
+        greeting_message = conversation.reload.messages.template.last
+        expect(greeting_message.content).to eq('Hello! How can we help you?')
+      end
+
+      it 'does NOT schedule Captain response when greeting is sent (first message defers to greeting)' do
+        inbox.update!(greeting_enabled: true, greeting_message: 'Hello! How can we help you?', enable_email_collect: false)
+
+        # Captain should NOT be scheduled when greeting is sent on first message
+        expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:perform_later)
+
+        create(:message, conversation: conversation, message_type: :incoming)
       end
 
       it 'does not create out of office message in conversation' do

@@ -1,6 +1,8 @@
 require 'agents'
 
 class Captain::Assistant::AgentRunnerService
+  include Integrations::LlmInstrumentation
+
   CONVERSATION_STATE_ATTRIBUTES = %i[
     id display_id inbox_id contact_id status priority
     label_list custom_attributes additional_attributes
@@ -18,12 +20,17 @@ class Captain::Assistant::AgentRunnerService
   end
 
   def generate_response(message_history: [])
+    @message_history = message_history
     agents = build_and_wire_agents
     context = build_context(message_history)
     message_to_process = extract_last_user_message(message_history)
     runner = Agents::Runner.with_agents(*agents)
+    runner = add_instrumentation_callbacks(runner)
     runner = add_callbacks_to_runner(runner) if @callbacks.any?
-    result = runner.run(message_to_process, context: context, max_turns: 100)
+
+    result = instrument_agent_session(agent_instrumentation_params) do
+      runner.run(message_to_process, context: context, max_turns: 100)
+    end
 
     process_agent_result(result)
   rescue StandardError => e
@@ -130,6 +137,44 @@ class Captain::Assistant::AgentRunnerService
     runner = add_tool_complete_callback(runner) if @callbacks[:on_tool_complete]
     runner = add_agent_handoff_callback(runner) if @callbacks[:on_agent_handoff]
     runner
+  end
+
+  def add_instrumentation_callbacks(runner)
+    return runner unless ChatwootApp.otel_enabled?
+
+    runner.on_tool_start do |tool_call|
+      start_tool_span(tool_call)
+    rescue StandardError => e
+      Rails.logger.warn "[Captain V2] Instrumentation tool_start error: #{e.message}"
+    end
+
+    runner.on_tool_complete do |result|
+      end_tool_span(result)
+    rescue StandardError => e
+      Rails.logger.warn "[Captain V2] Instrumentation tool_complete error: #{e.message}"
+    end
+
+    runner
+  end
+
+  def agent_instrumentation_params
+    {
+      span_name: 'llm.captain.assistant_v2',
+      account_id: @assistant.account_id,
+      conversation_id: @conversation&.display_id,
+      feature_name: 'assistant_v2',
+      model: agent_model,
+      messages: @message_history || [],
+      temperature: @assistant.temperature || 0.7,
+      metadata: {
+        assistant_id: @assistant.id,
+        conversation_id: @conversation&.id
+      }
+    }
+  end
+
+  def agent_model
+    InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
   end
 
   def add_agent_thinking_callback(runner)

@@ -53,6 +53,12 @@ class Captain::Assistant < ApplicationRecord
   def available_agent_tools
     tools = self.class.built_in_agent_tools.dup
 
+    # Filter out tools that are not available for this account
+    tools.select! do |tool_metadata|
+      tool_class = self.class.resolve_tool_class(tool_metadata[:id])
+      tool_class.nil? || tool_class.available?(account)
+    end
+
     custom_tools = account.captain_custom_tools.enabled.map(&:to_tool_metadata)
     tools.concat(custom_tools)
 

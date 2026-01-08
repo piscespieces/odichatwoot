@@ -284,3 +284,38 @@ leadsquared:
       'conversation_activity_score',
       'transcript_activity_score',
     ]
+google_calendar:
+  id: google_calendar
+  logo: google_calendar.png
+  i18n_key: google_calendar
+  action: /google_calendar
+  hook_type: account
+  allow_multiple_hooks: false
+
+cal_com:
+  id: cal_com
+  logo: cal_com.png
+  i18n_key: cal_com
+  action: /cal_com
+  hook_type: account
+  allow_multiple_hooks: false
+  settings_json_schema:
+    {
+      'type': 'object',
+      'properties':
+        {
+          'api_key': { 'type': 'string' },
+        },
+      'required': ['api_key'],
+      'additionalProperties': false,
+    }
+  settings_form_schema:
+    [
+      {
+        'label': 'Cal.com API Key',
+        'type': 'text',
+        'name': 'api_key',
+        'validation': 'required',
+      },
+    ]
+  visible_properties: []

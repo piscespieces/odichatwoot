@@ -266,6 +266,10 @@ Rails.application.routes.draw do
             resource :authorization, only: [:create]
           end
 
+          namespace :google_calendar do
+            resource :authorization, only: [:create]
+          end
+
           namespace :instagram do
             resource :authorization, only: [:create]
           end
@@ -295,6 +299,7 @@ Rails.application.routes.draw do
                 get :list_all_channels
               end
             end
+            resource :google_calendar, only: [:destroy], controller: 'google_calendar'
             resource :dyte, controller: 'dyte', only: [] do
               collection do
                 post :create_a_meeting
@@ -573,6 +578,7 @@ Rails.application.routes.draw do
 
   get 'microsoft/callback', to: 'microsoft/callbacks#show'
   get 'google/callback', to: 'google/callbacks#show'
+  get 'google_calendar/callback', to: 'google_calendar/callbacks#show'
   get 'instagram/callback', to: 'instagram/callbacks#show'
   get 'tiktok/callback', to: 'tiktok/callbacks#show'
   get 'notion/callback', to: 'notion/callbacks#show'

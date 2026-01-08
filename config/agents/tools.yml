@@ -34,3 +34,33 @@
   title: 'Handoff to Human'
   description: 'Hand off the conversation to a human agent'
   icon: 'user-switch'
+
+- id: create_calendar_event
+  title: 'Create Calendar Event'
+  description: 'Create a new event in Google Calendar'
+  icon: 'calendar-plus'
+
+- id: get_current_calendar_time
+  title: 'Get Current Calendar Time'
+  description: 'Get the current Google Calendar time in ISO 8601 format'
+  icon: 'clock'
+
+- id: get_free_busy_calendar
+  title: 'Get Free/Busy Calendar'
+  description: "Query Google's free/busy endpoint for busy time blocks"
+  icon: 'calendar-search'
+
+- id: get_current_cal_com_time
+  title: 'Get Current Cal.com Time'
+  description: 'Get the current time using Cal.com account timezone'
+  icon: 'clock'
+
+- id: get_cal_com_available_slot
+  title: 'Get Cal.com Available Slots'
+  description: 'Get available time slots from Cal.com for scheduling appointments'
+  icon: 'calendar-search'
+
+- id: create_cal_com_booking
+  title: 'Create Cal.com Booking'
+  description: 'Create a booking/appointment in Cal.com'
+  icon: 'calendar-plus'
