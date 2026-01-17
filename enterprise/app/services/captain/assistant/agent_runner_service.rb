@@ -126,7 +126,12 @@ class Captain::Assistant::AgentRunnerService
     scenario_agents = @assistant.scenarios.enabled.map(&:agent)
 
     assistant_agent.register_handoffs(*scenario_agents) if scenario_agents.any?
-    scenario_agents.each { |scenario_agent| scenario_agent.register_handoffs(assistant_agent) }
+
+    # Mesh topology: each scenario can handoff to the main assistant AND all other scenarios
+    scenario_agents.each do |scenario_agent|
+      handoff_targets = [assistant_agent] + (scenario_agents - [scenario_agent])
+      scenario_agent.register_handoffs(*handoff_targets)
+    end
 
     [assistant_agent] + scenario_agents
   end
