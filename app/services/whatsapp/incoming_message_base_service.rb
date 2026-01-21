@@ -3,6 +3,7 @@
 # https://developers.facebook.com/docs/whatsapp/api/media/
 class Whatsapp::IncomingMessageBaseService
   include ::Whatsapp::IncomingMessageServiceHelpers
+  include ::Whatsapp::IncomingMessageCoexistenceHelpers
 
   pattr_initialize [:inbox!, :params!]
 
@@ -13,6 +14,10 @@ class Whatsapp::IncomingMessageBaseService
       process_statuses
     elsif processed_params.try(:[], :messages).present?
       process_messages
+    elsif processed_params.try(:[], :message_echoes).present?
+      # WhatsApp Coexistence: Handle messages sent from WhatsApp Business App
+      # These arrive with the key 'message_echoes' instead of 'messages'
+      process_message_echoes
     end
   end
 
@@ -65,6 +70,17 @@ class Whatsapp::IncomingMessageBaseService
     message_type == 'contacts' ? create_contact_messages(message) : create_regular_message(message)
   end
 
+  # WhatsApp Coexistence Support:
+  # When a user sends a message from the WhatsApp Business App (not Chatwoot),
+  # WhatsApp still sends a webhook to keep the conversation in sync.
+  # In this case, the 'from' field contains our own business phone number.
+  # We detect this by comparing 'from' with our inbox's phone number.
+  def outgoing_message?
+    inbox_phone_number = @inbox.channel.phone_number.delete('+')
+    payload_phone_number = @processed_params[:messages].first[:from]
+    inbox_phone_number == payload_phone_number
+  end
+
   def create_contact_messages(message)
     message['contacts'].each do |contact|
       create_message(contact)
@@ -81,6 +97,24 @@ class Whatsapp::IncomingMessageBaseService
   end
 
   def set_contact
+    # WhatsApp Coexistence: For outgoing messages, the customer is in the 'to' field.
+    # We use 'to' to find/create the contact instead of 'from' (which is our business number).
+    if outgoing_message?
+      recipient = @processed_params[:messages].first[:to]
+      return if recipient.blank?
+
+      waid = processed_waid(recipient)
+      phone_number = "+#{recipient}"
+
+      @contact_inbox = ::ContactInboxWithContactBuilder.new(
+        source_id: waid,
+        inbox: inbox,
+        contact_attributes: { phone_number: phone_number }
+      ).perform
+      @contact = @contact_inbox.contact
+      return
+    end
+
     contact_params = @processed_params[:contacts]&.first
     return if contact_params.blank?
 
@@ -146,12 +180,16 @@ class Whatsapp::IncomingMessageBaseService
   end
 
   def create_message(message)
+    # WhatsApp Coexistence: Set message_type based on whether this is an echo of
+    # our own outgoing message or an actual incoming message from a customer.
+    # For outgoing messages, sender is nil (sent by business, not a contact).
+    msg_type = outgoing_message? ? :outgoing : :incoming
     @message = @conversation.messages.build(
       content: message_content(message),
       account_id: @inbox.account_id,
       inbox_id: @inbox.id,
-      message_type: :incoming,
-      sender: @contact,
+      message_type: msg_type,
+      sender: (msg_type == :incoming ? @contact : nil),
       source_id: message[:id].to_s,
       in_reply_to_external_id: @in_reply_to_external_id
     )
@@ -189,7 +227,8 @@ class Whatsapp::IncomingMessageBaseService
   end
 
   def contact_name_matches_phone_number?
-    phone_number = "+#{@processed_params[:messages].first[:from]}"
+    # WhatsApp Coexistence: Use 'to' for outgoing messages, 'from' for incoming.
+    phone_number = outgoing_message? ? "+#{@processed_params[:messages].first[:to]}" : "+#{@processed_params[:messages].first[:from]}"
     formatted_phone_number = TelephoneNumber.parse(phone_number).international_number
     @contact.name == phone_number || @contact.name == formatted_phone_number
   end
