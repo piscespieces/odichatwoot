@@ -731,8 +731,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_14_201315) do
     t.text "feedback_message"
     t.bigint "contact_id", null: false
     t.bigint "assigned_agent_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
     t.text "csat_review_notes"
     t.datetime "review_notes_updated_at"
     t.bigint "review_notes_updated_by_id"
@@ -1244,8 +1244,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_14_201315) do
     t.integer "account_id"
     t.integer "inbox_id"
     t.text "url"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
     t.integer "webhook_type", default: 0
     t.jsonb "subscriptions", default: ["conversation_status_changed", "conversation_updated", "conversation_created", "contact_created", "contact_updated", "message_created", "message_updated", "webwidget_triggered"]
     t.string "name"
