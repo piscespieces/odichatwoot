@@ -517,6 +517,29 @@ describe Whatsapp::IncomingMessageService do
         existing_contact.reload
         expect(existing_contact.name).to eq(phone_number) # Should not change
       end
+
+      it 'updates contact name when current name is a Haikunator-generated name (WhatsApp Coexistence)' do
+        # Haikunator names are generated when contacts are created from outgoing message echoes
+        # (e.g., when agent sends message from WhatsApp Business App before customer sends a message)
+        existing_contact = create(:contact,
+                                  account: whatsapp_channel.inbox.account,
+                                  name: 'autumn-violet-854',
+                                  phone_number: phone_number)
+        create(:contact_inbox,
+               contact: existing_contact,
+               inbox: whatsapp_channel.inbox,
+               source_id: wa_id)
+
+        params = {
+          'contacts' => [{ 'profile' => { 'name' => 'María García' }, 'wa_id' => wa_id }],
+          'messages' => [{ 'from' => wa_id, 'id' => 'message123', 'text' => { 'body' => 'Hello' },
+                           'timestamp' => '1633034394', 'type' => 'text' }]
+        }.with_indifferent_access
+
+        described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
+        existing_contact.reload
+        expect(existing_contact.name).to eq('María García')
+      end
     end
   end
 end

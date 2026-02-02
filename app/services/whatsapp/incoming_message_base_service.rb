@@ -230,6 +230,18 @@ class Whatsapp::IncomingMessageBaseService
     # WhatsApp Coexistence: Use 'to' for outgoing messages, 'from' for incoming.
     phone_number = outgoing_message? ? "+#{@processed_params[:messages].first[:to]}" : "+#{@processed_params[:messages].first[:from]}"
     formatted_phone_number = TelephoneNumber.parse(phone_number).international_number
-    @contact.name == phone_number || @contact.name == formatted_phone_number
+
+    # Check if name matches phone number (raw or formatted)
+    return true if @contact.name == phone_number || @contact.name == formatted_phone_number
+
+    # WhatsApp Coexistence: Check if name looks like a Haikunator-generated name (e.g., "autumn-violet-854")
+    # These are created when contact is created from an outgoing message echoes without profile info
+    haikunator_pattern?(@contact.name)
+  end
+
+  def haikunator_pattern?(name)
+    # Haikunator generates names like: "word-word-number" (e.g., "autumn-violet-854")
+    # Pattern: lowercase-word, hyphen, lowercase-word, hyphen, 1-4 digit number
+    name.present? && name.match?(/\A[a-z]+-[a-z]+-\d{1,4}\z/)
   end
 end
