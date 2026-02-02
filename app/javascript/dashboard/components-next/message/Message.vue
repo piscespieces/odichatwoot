@@ -304,6 +304,7 @@ const componentToRender = computed(() => {
     ATTACHMENT_TYPES.STORY_MENTION,
     ATTACHMENT_TYPES.IG_STORY,
     ATTACHMENT_TYPES.IG_POST,
+    ATTACHMENT_TYPES.STORY_REPLY,
   ];
   if (instagramSharedTypes.includes(props.contentAttributes.imageType)) {
     return InstagramStoryBubble;

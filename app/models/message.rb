@@ -223,7 +223,8 @@ class Message < ApplicationRecord
       {
         story_id: story_info['id'],
         story_sender: inbox.channel.instagram_id,
-        story_url: story_info['url']
+        story_url: story_info['url'],
+        image_type: 'story_reply'
       }
     )
     save!
