@@ -155,13 +155,16 @@ class Whatsapp::IncomingMessageBaseService
     attachment_file = download_attachment_file(attachment_payload)
     return if attachment_file.blank?
 
+    # Transcode audio files (voice notes) from OGG/Opus to MP3 for Safari/iOS compatibility
+    file_info = transcode_audio_if_needed(attachment_file)
+
     @message.attachments.new(
       account_id: @message.account_id,
       file_type: file_content_type(message_type),
       file: {
-        io: attachment_file,
-        filename: attachment_file.original_filename,
-        content_type: attachment_file.content_type
+        io: file_info[:file],
+        filename: file_info[:filename],
+        content_type: file_info[:content_type]
       }
     )
   end
@@ -243,5 +246,25 @@ class Whatsapp::IncomingMessageBaseService
     # Haikunator generates names like: "word-word-number" (e.g., "autumn-violet-854")
     # Pattern: lowercase-word, hyphen, lowercase-word, hyphen, 1-4 digit number
     name.present? && name.match?(/\A[a-z]+-[a-z]+-\d{1,4}\z/)
+  end
+
+  # Transcode OGG/Opus audio files to MP3 for Safari/iOS compatibility
+  def transcode_audio_if_needed(attachment_file)
+    return default_file_info(attachment_file) unless audio_message_type?
+
+    service = AudioTranscodingService.new(attachment_file, content_type: attachment_file.content_type)
+    service.perform
+  end
+
+  def audio_message_type?
+    %w[audio voice].include?(message_type)
+  end
+
+  def default_file_info(attachment_file)
+    {
+      file: attachment_file,
+      filename: attachment_file.original_filename,
+      content_type: attachment_file.content_type
+    }
   end
 end
