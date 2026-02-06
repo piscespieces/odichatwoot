@@ -51,9 +51,12 @@ class Messages::MessageBuilder
     return if @attachments.blank?
 
     @attachments.each do |uploaded_attachment|
+      # Transcode video if needed for WhatsApp compatibility
+      processed_attachment = transcode_video_if_needed(uploaded_attachment)
+
       attachment = @message.attachments.build(
         account_id: @message.account_id,
-        file: uploaded_attachment
+        file: processed_attachment[:file]
       )
 
       attachment.file_type = if uploaded_attachment.is_a?(String)
@@ -61,9 +64,42 @@ class Messages::MessageBuilder
                                  uploaded_attachment
                                )
                              else
-                               file_type(uploaded_attachment&.content_type)
+                               file_type(processed_attachment[:content_type] || uploaded_attachment&.content_type)
                              end
     end
+  end
+
+  # Transcode MOV videos to MP4 for WhatsApp channel compatibility
+  def transcode_video_if_needed(uploaded_attachment)
+    # Skip if it's a signed_id string reference
+    return { file: uploaded_attachment, content_type: nil } if uploaded_attachment.is_a?(String)
+
+    # Only transcode for WhatsApp channels
+    return { file: uploaded_attachment, content_type: uploaded_attachment&.content_type } unless whatsapp_channel?
+
+    content_type = uploaded_attachment&.content_type
+    return { file: uploaded_attachment, content_type: content_type } unless video_needs_transcoding?(content_type)
+
+    result = VideoTranscodingService.new(uploaded_attachment, content_type: content_type).perform
+
+    if result[:transcoded]
+      Rails.logger.info 'Video transcoded from MOV to MP4 for WhatsApp compatibility'
+      # Create an ActionDispatch::Http::UploadedFile-like object for the transcoded file
+      {
+        file: result[:file],
+        content_type: result[:content_type]
+      }
+    else
+      { file: uploaded_attachment, content_type: content_type }
+    end
+  end
+
+  def whatsapp_channel?
+    @conversation.inbox&.channel_type == 'Channel::Whatsapp'
+  end
+
+  def video_needs_transcoding?(content_type)
+    VideoTranscodingService::SUPPORTED_INPUT_FORMATS.include?(content_type&.downcase)
   end
 
   def process_emails
