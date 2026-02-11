@@ -8,18 +8,10 @@ import MessageFormatter from 'shared/helpers/MessageFormatter.js';
 import { MESSAGE_VARIANTS } from '../constants';
 
 const emit = defineEmits(['error']);
-const { variant, content, attachments, contentAttributes } =
-  useMessageContext();
+const { variant, content, attachments } = useMessageContext();
 
-// For story replies, the URL is in contentAttributes.storyUrl
-// For story mentions, it's in attachments[0].dataUrl
-const mediaUrl = computed(() => {
-  // Story reply: URL is stored in contentAttributes
-  if (contentAttributes.value?.storyUrl) {
-    return contentAttributes.value.storyUrl;
-  }
-  // Story mention: URL is in attachment
-  return attachments.value?.[0]?.dataUrl;
+const attachment = computed(() => {
+  return attachments.value[0];
 });
 
 const hasImgStoryError = ref(false);
@@ -48,16 +40,16 @@ const onVideoLoadError = () => {
   <BaseBubble class="p-3 overflow-hidden" data-bubble-name="ig-story">
     <div v-if="content" v-dompurify-html="formattedContent" class="mb-2" />
     <img
-      v-if="!hasImgStoryError && mediaUrl"
+      v-if="!hasImgStoryError"
       class="rounded-lg max-w-80 skip-context-menu"
-      :src="mediaUrl"
+      :src="attachment.dataUrl"
       @error="onImageLoadError"
     />
     <video
-      v-else-if="!hasVideoStoryError && mediaUrl"
+      v-else-if="!hasVideoStoryError"
       class="rounded-lg max-w-80 skip-context-menu"
       controls
-      :src="mediaUrl"
+      :src="attachment.dataUrl"
       @error="onVideoLoadError"
     />
     <div

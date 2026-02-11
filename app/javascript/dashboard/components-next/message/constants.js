@@ -52,7 +52,6 @@ export const ATTACHMENT_TYPES = {
   EMBED: 'embed',
   IG_POST: 'ig_post',
   IG_STORY: 'ig_story',
-  STORY_REPLY: 'story_reply',
 };
 
 export const CONTENT_TYPES = {
