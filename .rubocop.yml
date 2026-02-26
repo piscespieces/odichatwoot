@@ -16,13 +16,13 @@ Layout/LineLength:
 Metrics/ClassLength:
   Max: 175
   Exclude:
-    - 'app/models/message.rb'
-    - 'app/models/conversation.rb'
+    - "app/models/message.rb"
+    - "app/models/conversation.rb"
 
 Metrics/MethodLength:
   Max: 19
   Exclude:
-    - 'enterprise/lib/captain/agent.rb'
+    - "enterprise/lib/captain/agent.rb"
 
 RSpec/ExampleLength:
   Max: 50
@@ -45,46 +45,46 @@ Style/OpenStructUse:
 Chatwoot/AttachmentDownload:
   Enabled: true
   Exclude:
-    - 'spec/**/*'
-    - 'test/**/*'
+    - "spec/**/*"
+    - "test/**/*"
 
 Style/OptionalBooleanParameter:
   Exclude:
-    - 'app/services/email_templates/db_resolver_service.rb'
-    - 'app/dispatchers/dispatcher.rb'
+    - "app/services/email_templates/db_resolver_service.rb"
+    - "app/dispatchers/dispatcher.rb"
 
 Style/GlobalVars:
   Exclude:
-    - 'config/initializers/01_redis.rb'
-    - 'config/initializers/rack_attack.rb'
-    - 'lib/redis/alfred.rb'
-    - 'lib/global_config.rb'
+    - "config/initializers/01_redis.rb"
+    - "config/initializers/rack_attack.rb"
+    - "lib/redis/alfred.rb"
+    - "lib/global_config.rb"
 
 Style/ClassVars:
   Exclude:
-    - 'app/services/email_templates/db_resolver_service.rb'
+    - "app/services/email_templates/db_resolver_service.rb"
 
 Lint/MissingSuper:
   Exclude:
-    - 'app/drops/base_drop.rb'
+    - "app/drops/base_drop.rb"
 
 Lint/SymbolConversion:
   Enabled: false
 
 Lint/EmptyBlock:
   Exclude:
-    - 'app/views/api/v1/accounts/conversations/toggle_status.json.jbuilder'
+    - "app/views/api/v1/accounts/conversations/toggle_status.json.jbuilder"
 
 Lint/OrAssignmentToConstant:
   Exclude:
-    - 'lib/redis/config.rb'
+    - "lib/redis/config.rb"
 
 Metrics/BlockLength:
   Max: 30
   Exclude:
     - spec/**/*
-    - '**/routes.rb'
-    - 'config/environments/*'
+    - "**/routes.rb"
+    - "config/environments/*"
     - db/schema.rb
 
 Metrics/ModuleLength:
@@ -98,18 +98,18 @@ Rails/HelperInstanceVariable:
     - enterprise/app/helpers/captain/chat_response_helper.rb
 Rails/ApplicationController:
   Exclude:
-    - 'app/controllers/api/v1/widget/messages_controller.rb'
-    - 'app/controllers/dashboard_controller.rb'
-    - 'app/controllers/widget_tests_controller.rb'
-    - 'app/controllers/widgets_controller.rb'
-    - 'app/controllers/platform_controller.rb'
-    - 'app/controllers/public_controller.rb'
-    - 'app/controllers/survey/responses_controller.rb'
+    - "app/controllers/api/v1/widget/messages_controller.rb"
+    - "app/controllers/dashboard_controller.rb"
+    - "app/controllers/widget_tests_controller.rb"
+    - "app/controllers/widgets_controller.rb"
+    - "app/controllers/platform_controller.rb"
+    - "app/controllers/public_controller.rb"
+    - "app/controllers/survey/responses_controller.rb"
 
 Rails/FindEach:
   Enabled: true
   Include:
-    - 'app/**/*.rb'
+    - "app/**/*.rb"
 
 Rails/CompactBlank:
   Enabled: false
@@ -132,15 +132,15 @@ Rails/UniqueValidationWithoutIndex:
     - app/models/canned_response.rb
     - app/models/telegram_bot.rb
     - enterprise/app/models/captain_inbox.rb
-    - 'app/models/channel/twitter_profile.rb'
-    - 'app/models/webhook.rb'
-    - 'app/models/contact.rb'
+    - "app/models/channel/twitter_profile.rb"
+    - "app/models/webhook.rb"
+    - "app/models/contact.rb"
 
 Style/ClassAndModuleChildren:
   EnforcedStyle: compact
   Exclude:
-    - 'config/application.rb'
-    - 'config/initializers/monkey_patches/*'
+    - "config/application.rb"
+    - "config/initializers/monkey_patches/*"
 
 Style/MapToHash:
   Enabled: false
@@ -165,30 +165,30 @@ Naming/VariableNumber:
 
 Naming/MemoizedInstanceVariableName:
   Exclude:
-    - 'app/models/message.rb'
+    - "app/models/message.rb"
 
 Style/GuardClause:
   Exclude:
-    - 'app/builders/account_builder.rb'
-    - 'app/models/attachment.rb'
-    - 'app/models/message.rb'
+    - "app/builders/account_builder.rb"
+    - "app/models/attachment.rb"
+    - "app/models/message.rb"
 
 Metrics/AbcSize:
   Max: 26
   Exclude:
-    - 'app/controllers/concerns/auth_helper.rb'
+    - "app/controllers/concerns/auth_helper.rb"
 
-    - 'app/models/integrations/hook.rb'
-    - 'app/models/canned_response.rb'
-    - 'app/models/telegram_bot.rb'
+    - "app/models/integrations/hook.rb"
+    - "app/models/canned_response.rb"
+    - "app/models/telegram_bot.rb"
 
 Rails/RenderInline:
   Exclude:
-    - 'app/controllers/swagger_controller.rb'
+    - "app/controllers/swagger_controller.rb"
 
 Rails/ThreeStateBooleanColumn:
   Exclude:
-    - 'db/migrate/20230503101201_create_sla_policies.rb'
+    - "db/migrate/20230503101201_create_sla_policies.rb"
 
 RSpec/IndexedLet:
   Enabled: false
@@ -207,8 +207,8 @@ RSpec/MultipleMemoizedHelpers:
 UseFromEmail:
   Enabled: true
   Exclude:
-    - 'app/models/user.rb'
-    - 'app/models/contact.rb'
+    - "app/models/user.rb"
+    - "app/models/contact.rb"
 
 CustomCopLocation:
   Enabled: true
@@ -217,19 +217,20 @@ Style/OneClassPerFile:
   Enabled: true
 
 AllCops:
+  SuggestExtensions: false
   NewCops: enable
   Exclude:
-    - 'bin/**/*'
-    - 'db/schema.rb'
-    - 'public/**/*'
-    - 'config/initializers/bot.rb'
-    - 'vendor/**/*'
-    - 'node_modules/**/*'
-    - 'lib/tasks/auto_annotate_models.rake'
-    - 'config/environments/**/*'
-    - 'tmp/**/*'
-    - 'storage/**/*'
-    - 'db/migrate/20230426130150_init_schema.rb'
+    - "bin/**/*"
+    - "db/schema.rb"
+    - "public/**/*"
+    - "config/initializers/bot.rb"
+    - "vendor/**/*"
+    - "node_modules/**/*"
+    - "lib/tasks/auto_annotate_models.rake"
+    - "config/environments/**/*"
+    - "tmp/**/*"
+    - "storage/**/*"
+    - "db/migrate/20230426130150_init_schema.rb"
 
 FactoryBot/SyntaxMethods:
   Enabled: false
