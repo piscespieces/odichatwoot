@@ -13,7 +13,7 @@ export default {
       // -----------------------------------------------------------
       // ADD THE ACCOUNT IDs THAT SHOULD SEE THE BANNER HERE
       // -----------------------------------------------------------
-      const overdueAccountIds = [5, 6]; // Example: [1, 5]
+      const overdueAccountIds = [6]; // Example: [1, 5]
       // -----------------------------------------------------------
 
       return overdueAccountIds.includes(Number(this.accountId));
