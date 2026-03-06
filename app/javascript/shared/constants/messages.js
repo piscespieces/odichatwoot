@@ -102,6 +102,10 @@ export const MESSAGE_VARIABLES = [
     key: 'conversation.id',
   },
   {
+    label: 'Conversation UUID',
+    key: 'conversation.uuid',
+  },
+  {
     label: 'Contact Id',
     key: 'contact.id',
   },

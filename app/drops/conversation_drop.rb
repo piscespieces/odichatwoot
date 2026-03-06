@@ -5,6 +5,10 @@ class ConversationDrop < BaseDrop
     @obj.try(:display_id)
   end
 
+  def uuid
+    @obj.try(:uuid)
+  end
+
   def contact_name
     @obj.try(:contact).name.try(:capitalize) || 'Customer'
   end
