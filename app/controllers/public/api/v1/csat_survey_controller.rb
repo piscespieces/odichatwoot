@@ -19,7 +19,20 @@ class Public::Api::V1::CsatSurveyController < PublicController
   end
 
   def set_message
-    @message = @conversation.messages.find_by!(content_type: 'input_csat')
+    @message = @conversation.messages.where(content_type: 'input_csat').last
+
+    return if @message.present?
+
+    # If no input_csat message was created natively (e.g. because CSAT is disabled and an automation sent the link),
+    # we create a silent/private input_csat message to anchor the rating locally.
+    @message = @conversation.messages.create!(
+      account_id: @conversation.account_id,
+      inbox_id: @conversation.inbox_id,
+      message_type: :outgoing,
+      content_type: :input_csat,
+      content: 'Customer Satisfaction Survey',
+      private: true
+    )
   end
 
   def message_update_params
