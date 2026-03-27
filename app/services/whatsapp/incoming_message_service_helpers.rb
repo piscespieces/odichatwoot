@@ -3,6 +3,16 @@ module Whatsapp::IncomingMessageServiceHelpers
     Down.download(inbox.channel.media_url(attachment_payload[:id]), headers: inbox.channel.api_headers)
   end
 
+  # Transcodes OGG/Opus audio to MP3 for iOS Safari compatibility
+  def prepare_attachment_file(attachment_file, attachment_type)
+    if attachment_type == :audio
+      result = AudioTranscodingService.new(attachment_file, content_type: attachment_file.content_type).perform
+      { io: result[:file], filename: result[:filename], content_type: result[:content_type] }
+    else
+      { io: attachment_file, filename: attachment_file.original_filename, content_type: attachment_file.content_type }
+    end
+  end
+
   def conversation_params
     {
       account_id: @inbox.account_id,
