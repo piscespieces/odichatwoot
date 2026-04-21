@@ -96,7 +96,7 @@ env:
 #
 aliases:
   console: app exec --interactive --reuse "bin/rails console"
-  shell: app exec --interactive --reuse "bash"
+  shell: app exec --interactive --reuse "sh"
   logs: app logs -f
 
 # Use a different ssh user than root
@@ -114,6 +114,12 @@ aliases:
 # version inside the asset_path.
 #
 asset_path: /app/public/assets
+
+logging:
+  driver: json-file
+  options:
+    max-size: 100m
+    max-file: "5"
 
 # Configure rolling deploys by setting a wait time between batches of restarts.
 #
