@@ -150,12 +150,14 @@ class Whatsapp::IncomingMessageBaseService
     attachment_file = download_attachment_file(attachment_payload)
     return if attachment_file.blank?
 
-    file_params = prepare_attachment_file(attachment_file, file_content_type(message_type))
-
     @message.attachments.new(
       account_id: @message.account_id,
       file_type: file_content_type(message_type),
-      file: file_params
+      file: {
+        io: attachment_file,
+        filename: attachment_file.original_filename,
+        content_type: attachment_file.content_type
+      }
     )
   end
 
