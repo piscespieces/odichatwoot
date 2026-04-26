@@ -13,6 +13,8 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
 
     return if should_skip_for_newer_messages?
 
+    return unless conversation_pending?
+
     Current.executed_by = @assistant
 
     if captain_v2_enabled?
@@ -20,9 +22,10 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     else
       generate_and_process_response
     end
+  rescue ActiveStorage::FileNotFoundError, Faraday::BadRequestError => e
+    handle_error(e)
+    raise e
   rescue StandardError => e
-    raise e if e.is_a?(ActiveStorage::FileNotFoundError) || e.is_a?(Faraday::BadRequestError)
-
     handle_error(e)
   ensure
     Current.executed_by = nil
@@ -33,7 +36,7 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
   delegate :account, :inbox, to: :@conversation
 
   def generate_and_process_response
-    @response = Captain::Llm::AssistantChatService.new(assistant: @assistant, conversation_id: @conversation.display_id).generate_response(
+    @response = Captain::Llm::AssistantChatService.new(assistant: @assistant, conversation: @conversation).generate_response(
       message_history: collect_previous_messages
     )
     process_response
@@ -47,10 +50,29 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
   end
 
   def process_response
-    ActiveRecord::Base.transaction do
-      if handoff_requested?
-        process_action('handoff')
+    # Check V2 before V1: error_response can set both signals at once when HandoffTool
+    # fired before the runner errored. V2 must win — running V1 on top would duplicate
+    # OOO and re-dispatch the bot_handoff event.
+    if v2_handoff_tool_fired?
+      if conversation_pending?
+        # HandoffTool flipped the flag without committing — its perform returned a
+        # failure string (e.g. "Conversation not found") before bot_handoff! ran. Fall
+        # back to a full V1 handoff so the customer still ends up with a human.
+        process_v1_handoff
       else
+        # HandoffTool already opened the conversation inside the agent loop. All that's
+        # left is the customer-facing follow-up message.
+        process_v2_handoff
+      end
+    elsif v1_handoff_requested?
+      # V1 only signals via the response string — no state has been touched yet. If
+      # the conversation isn't pending anymore, a human took over mid-run; bail out
+      # rather than posting a stale handoff message on top of their reply.
+      return unless conversation_pending?
+
+      process_v1_handoff
+    elsif conversation_pending?
+      ActiveRecord::Base.transaction do
         create_messages
         Rails.logger.info("[CAPTAIN][ResponseBuilderJob] Incrementing response usage for #{account.id}")
         account.increment_response_usage
@@ -84,18 +106,27 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     Captain::OpenAiMessageBuilderService.new(message: message).generate_content
   end
 
-  def handoff_requested?
+  def v1_handoff_requested?
     @response['response'] == 'conversation_handoff'
   end
 
-  def process_action(action)
-    case action
-    when 'handoff'
-      I18n.with_locale(@assistant.account.locale) do
-        create_handoff_message
-        @conversation.bot_handoff!
-        send_out_of_office_message_if_applicable
-      end
+  def v2_handoff_tool_fired?
+    @response['handoff_tool_called']
+  end
+
+  def process_v1_handoff
+    I18n.with_locale(@assistant.account.locale) do
+      create_handoff_message
+      @conversation.bot_handoff!
+      send_out_of_office_message_if_applicable
+    end
+  end
+
+  def process_v2_handoff
+    # HandoffTool already ran bot_handoff! + OOO inside the agent loop. Preserve
+    # waiting_since so this message doesn't clear the timestamp it left in place.
+    I18n.with_locale(@assistant.account.locale) do
+      create_handoff_message(preserve_waiting_since: true)
     end
   end
 
@@ -107,9 +138,10 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     ::MessageTemplates::Template::OutOfOffice.perform_if_applicable(@conversation)
   end
 
-  def create_handoff_message
+  def create_handoff_message(preserve_waiting_since: false)
     create_outgoing_message(
-      @assistant.config['handoff_message'].presence || I18n.t('conversations.captain.handoff')
+      @assistant.config['handoff_message'].presence || I18n.t('conversations.captain.handoff'),
+      preserve_waiting_since: preserve_waiting_since
     )
   end
 
@@ -123,30 +155,7 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     raise ArgumentError, 'Message content cannot be blank' if content.blank?
   end
 
-  # Extracts clean response text from potentially malformed JSON content
-  # Handles cases where the agent returns JSON string(s) instead of plain text
-  def sanitize_response_content(content)
-    return content if content.blank?
-
-    # Try to extract response from JSON if the content looks like JSON
-    if content.strip.start_with?('{')
-      # Find all JSON objects in the string that contain a response key
-      json_pattern = /\{[^{}]*"response"\s*:\s*"[^"]*"[^{}]*\}/
-      matches = content.scan(json_pattern)
-
-      if matches.any?
-        # Parse the first JSON match and extract the response
-        parsed = JSON.parse(matches.first)
-        return parsed['response'] if parsed['response'].present?
-      end
-    end
-
-    content
-  rescue JSON::ParserError
-    content
-  end
-
-  def create_outgoing_message(message_content, agent_name: nil)
+  def create_outgoing_message(message_content, agent_name: nil, preserve_waiting_since: false)
     additional_attrs = {}
     additional_attrs[:agent_name] = agent_name if agent_name.present?
 
@@ -156,13 +165,14 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
       inbox_id: inbox.id,
       sender: @assistant,
       content: message_content,
-      additional_attributes: additional_attrs
+      additional_attributes: additional_attrs,
+      preserve_waiting_since: preserve_waiting_since
     )
   end
 
   def handle_error(error)
     log_error(error)
-    process_action('handoff')
+    process_v1_handoff if conversation_pending?
     true
   end
 
@@ -174,30 +184,8 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     account.feature_enabled?('captain_integration_v2')
   end
 
-  def should_skip_for_newer_messages?
-    return false unless buffered_response_channel?
-    return false unless @triggering_message_at # Backward compatibility: no debouncing if not passed
-
-    # Query the Message model directly instead of using the association
-    # to ensure we get fresh data (avoids ActiveRecord association caching)
-    # Force uncached query to ensure we get fresh data from the database
-    all_incoming = Message.uncached do
-      Message.where(conversation_id: @conversation.id)
-             .where(message_type: :incoming)
-             .reorder(created_at: :desc, id: :desc)
-             .limit(5)
-             .to_a
-    end
-
-    last_incoming = all_incoming.first
-    return false unless last_incoming
-
-    # Skip if there's a NEWER message than the one that triggered this job
-    # A newer job will be scheduled for that message
-    last_incoming.created_at > @triggering_message_at
-  end
-
-  def buffered_response_channel?
-    @inbox.whatsapp? || @inbox.instagram?
+  def conversation_pending?
+    status = Conversation.uncached { Conversation.where(id: @conversation.id).pick(:status) }
+    status == 'pending' || status == Conversation.statuses[:pending]
   end
 end

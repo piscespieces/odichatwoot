@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { getLastMessage } from 'dashboard/helper/conversationHelper';
@@ -10,7 +10,7 @@ import InboxName from '../InboxName.vue';
 import ConversationContextMenu from './contextMenu/Index.vue';
 import TimeAgo from 'dashboard/components/ui/TimeAgo.vue';
 import CardLabels from './conversationCardComponents/CardLabels.vue';
-import PriorityMark from './PriorityMark.vue';
+import CardPriorityIcon from 'dashboard/components-next/Conversation/ConversationCard/CardPriorityIcon.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import ContextMenu from 'dashboard/components/ui/ContextMenu.vue';
 import VoiceCallStatus from './VoiceCallStatus.vue';
@@ -50,10 +50,21 @@ const store = useStore();
 
 const hovered = ref(false);
 const showContextMenu = ref(false);
-const contextMenu = ref({
-  x: null,
-  y: null,
-});
+const contextMenu = ref({ x: null, y: null });
+
+// Reset UI state when conversation changes at same index (no :key, instance reused on reorder)
+// This prevents context menu/hover state from leaking to a different conversation
+// Emit contextMenuToggle(false) to sync parent state if menu was open during recycling
+const resetState = () => {
+  if (showContextMenu.value) {
+    emit('contextMenuToggle', false);
+  }
+  hovered.value = false;
+  showContextMenu.value = false;
+  contextMenu.value = { x: null, y: null };
+};
+
+watch(() => props.chat.id, resetState);
 
 const currentChat = useMapGetter('getSelectedChat');
 const inboxesList = useMapGetter('inboxes/getInboxes');
@@ -294,7 +305,7 @@ const deleteConversation = () => {
       >
         <InboxName v-if="showInboxName" :inbox="inbox" class="flex-1 min-w-0" />
         <div
-          class="flex items-center gap-2 flex-shrink-0"
+          class="flex items-baseline gap-2 flex-shrink-0"
           :class="{
             'flex-1 justify-between': !showInboxName,
           }"
@@ -306,7 +317,10 @@ const deleteConversation = () => {
             <fluent-icon icon="person" size="12" class="text-n-slate-11" />
             {{ assignee.name }}
           </span>
-          <PriorityMark :priority="chat.priority" class="flex-shrink-0" />
+          <CardPriorityIcon
+            :priority="chat.priority"
+            class="flex-shrink-0 !size-3.5"
+          />
         </div>
       </div>
       <h4
@@ -352,6 +366,7 @@ const deleteConversation = () => {
           <TimeAgo
             :last-activity-timestamp="chat.timestamp"
             :created-at-timestamp="chat.created_at"
+            :conversation-id="chat.id"
           />
         </span>
         <span
