@@ -13,6 +13,7 @@ class Messages::MessageBuilder
     @account = conversation.account
     @message_type = params[:message_type] || 'outgoing'
     @attachments = params[:attachments]
+    @is_voice_message = ActiveModel::Type::Boolean.new.cast(params[:is_voice_message])
     @automation_rule = content_attributes&.dig(:automation_rule_id)
     return unless params.instance_of?(ActionController::Parameters)
 
@@ -59,47 +60,23 @@ class Messages::MessageBuilder
         file: processed_attachment[:file]
       )
 
-      attachment.file_type = if uploaded_attachment.is_a?(String)
-                               file_type_by_signed_id(
-                                 uploaded_attachment
-                               )
-                             else
-                               file_type(processed_attachment[:content_type] || uploaded_attachment&.content_type)
-                             end
+      attachment.file_type = attachment_file_type(uploaded_attachment)
+      tag_voice_message(attachment)
     end
   end
 
-  # Transcode MOV videos to MP4 for WhatsApp channel compatibility
-  def transcode_video_if_needed(uploaded_attachment)
-    # Skip if it's a signed_id string reference
-    return { file: uploaded_attachment, content_type: nil } if uploaded_attachment.is_a?(String)
-
-    # Only transcode for WhatsApp channels
-    return { file: uploaded_attachment, content_type: uploaded_attachment&.content_type } unless whatsapp_channel?
-
-    content_type = uploaded_attachment&.content_type
-    return { file: uploaded_attachment, content_type: content_type } unless video_needs_transcoding?(content_type)
-
-    result = VideoTranscodingService.new(uploaded_attachment, content_type: content_type).perform
-
-    if result[:transcoded]
-      Rails.logger.info 'Video transcoded from MOV to MP4 for WhatsApp compatibility'
-      # Create an ActionDispatch::Http::UploadedFile-like object for the transcoded file
-      {
-        file: result[:file],
-        content_type: result[:content_type]
-      }
+  def attachment_file_type(uploaded_attachment)
+    if uploaded_attachment.is_a?(String)
+      file_type_by_signed_id(uploaded_attachment)
     else
-      { file: uploaded_attachment, content_type: content_type }
+      file_type(uploaded_attachment&.content_type)
     end
   end
 
-  def whatsapp_channel?
-    @conversation.inbox&.channel_type == 'Channel::Whatsapp'
-  end
+  def tag_voice_message(attachment)
+    return unless @is_voice_message && attachment.file_type == 'audio'
 
-  def video_needs_transcoding?(content_type)
-    VideoTranscodingService::SUPPORTED_INPUT_FORMATS.include?(content_type&.downcase)
+    attachment.meta = (attachment.meta || {}).merge('is_voice_message' => true)
   end
 
   def process_emails
