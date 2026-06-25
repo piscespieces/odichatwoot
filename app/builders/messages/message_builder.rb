@@ -52,12 +52,9 @@ class Messages::MessageBuilder
     return if @attachments.blank?
 
     @attachments.each do |uploaded_attachment|
-      # Transcode video if needed for WhatsApp compatibility
-      processed_attachment = transcode_video_if_needed(uploaded_attachment)
-
       attachment = @message.attachments.build(
         account_id: @message.account_id,
-        file: processed_attachment[:file]
+        file: uploaded_attachment
       )
 
       attachment.file_type = attachment_file_type(uploaded_attachment)
